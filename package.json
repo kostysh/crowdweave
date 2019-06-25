@@ -1,0 +1,29 @@
+{
+  "name": "crowdweave",
+  "version": "0.0.3",
+  "private": true,
+  "dependencies": {
+    "react": "16.8.6",
+    "react-dom": "16.8.6",
+    "react-scripts": "3.0.1",
+    "styled-components": "4.3.2",
+    "arweave": "1.4.0"
+  },
+  "devDependencies": {
+    "arweave-deploy": "1.3.0"
+  },
+  "scripts": {
+    "start": "BROWSER=none npx react-scripts start",
+    "build": "npx react-scripts build",
+    "savekey": "npx arweave key-save ./arweave-keyfile.json",
+    "deploy": "npm run build && npx arweave deploy ./build/index.html --package",
+    "testpack": "npm run build && npx arweave package ./build/index.html output/index.html",
+    "serve": "npm run testpack && npx serve -s output"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
+}
