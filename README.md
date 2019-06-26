@@ -7,7 +7,7 @@ A simple crowdfunding Dapp on Arweave blockchain
 - You can create unlimited count of simple funding projects and publish them on the [Arweave blockchain](https://www.arweave.org/).  
 - Anyone who have a Arweave wallet can invest AR tokens in your project
 
-Application is constantly available on the link: [https://arweave.net/-hSB7R6ysWaiauuHRXT5laHA-XbSgMt18FXuovroUzE](https://arweave.net/-hSB7R6ysWaiauuHRXT5laHA-XbSgMt18FXuovroUzE)
+Application is constantly available on the link: [https://arweave.net/LSglY5Qk3tzVg7K8HO6fdm56XrVcfoAHPtThmLpQRjk](https://arweave.net/LSglY5Qk3tzVg7K8HO6fdm56XrVcfoAHPtThmLpQRjk)
 
 ## Initialisation
 ```sh
