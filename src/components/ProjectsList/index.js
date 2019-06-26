@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import packageJson from '../../../package.json';
 import AppContext from '../../AppContext';
 import { TransactionContext } from '../TransactionMonitor';
-import Error from '../Error';
+import ErrorMsg from '../Error';
 import Loader from '../Loader';
 import AddForm from '../AddForm';
 import AddressLink from '../AddressLink';
@@ -43,85 +43,147 @@ border-bottom: 1px solid rgba(0,0,0,0.3);
 }
 `;
 
+const Column = styled.div`
+display: flex;
+flex-direction: column;
+flex-basis: 0;
+flex-grow: 1;
+${({ textAlign }) => { return `text-align: ${textAlign};`; }}
+`;
+
 const TitleOuter = styled.div`
 text-align: left;
-flex-grow: 1;
 `;
 
 const Details = styled.div`
-
+margin: 5px 0 0 15px;
 `;
 
 const Target = styled.div`
-flex-grow: 1;
+
 `;
 
 const Title = ({ children, details }) => {
     const [opened, setOpened] = useState(false);
 
     return (
-        <TitleOuter onClick={() => setOpened(!opened)}>
+        <TitleOuter 
+            title="Click on title to view details" 
+            onClick={() => setOpened(!opened)}
+        >
             {children}
             {opened &&
-                <Details>
-                    {details.description}<br/>
-                    Owner: <AddressLink address={details.address} />
-                </Details>
+                <div>
+                    <Details>
+                        {details.description}
+                    </Details>
+                    <Details>
+                        Owner: <AddressLink address={details.address} />
+                    </Details>
+                </div>
             }
         </TitleOuter>
     );
 };
 
-const SignButtonOuter = styled.div`
-flex-grow: 0;
-margin-right: 10px;
+const BackproBtn = styled.button`
+border: none;
+outline: none;
+cursor: pointer;
+padding: 4px 6px;
+background-color: #61dafb;
+color: white;
+font-size: 14px;
+
+&:hover {
+    background-color: #d0f5ff;
+    color: gray;
+}
+`;
+
+const DonateOuter = styled.div`
+display: flex;
+flex-direction: row;
+justify-content: flex-end;
+align-self: flex-end;
+width: 150px;
+text-align: right;
+`;
+
+const DonateForm = styled.div`
+display: flex;
+flex-direction: row;
+flex-wrap: nowrap;
+
+input[type=number] {
+    font-size: 14px;
+    margin-right: 10px;
+    width: 90px;
+}
 
 button {
-    padding: 3px 10px;
-    font-size: 14px;
     border: none;
     outline: none;
-    background-color: rgba(0,0,0,0.1);
-    color: grey;
     cursor: pointer;
-    border-radius: 5px;
 
     &:hover {
         background-color: white;
     }
 }
+
+button[type=submit] {
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+button[type=cancel] {
+    font-size: 12px;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+
+    &:hover {
+        color: grey;
+    }
+}
 `;
 
-const SignButton = ({ active, onClick }) => {
-
-    if (!active) {
-        return null;
-    }
+const Donate = ({ onSubmit = () => {} }) => {
+    const [opened, setOpened] = useState(false);
+    const [amount, setAmount] = useState(0.1);
 
     return (
-        <SignButtonOuter>
-            <button onClick={onClick}>Sign</button>
-        </SignButtonOuter>
+        <DonateOuter>
+            {!opened &&
+                <BackproBtn onClick={() => setOpened(!opened)}>
+                    Back this project
+                </BackproBtn>
+            }
+            {opened &&
+                <DonateForm>
+                    <input 
+                        type="number"
+                        value={amount} 
+                        min="0.000001"
+                        onChange={({ target: { value }}) => setAmount(value)}
+                    />
+                    <button
+                        type="submit"
+                        onClick={() => {
+                            setOpened(!opened);
+                            onSubmit(amount);
+                        }}
+                    >Donate</button>
+                    <button
+                        type="cancel"
+                        onClick={() => setOpened(!opened)}
+                    >X</button>
+                </DonateForm>
+            }
+        </DonateOuter>
     );
 };
-
-const SignsOuter = styled.div`
-display: flex;
-flex-direction: row;
-justify-content: flex-end;
-width: 150px;
-text-align: right;
-`;
-
-const Signs = ({ value, active, onClick }) => (
-    <SignsOuter>
-        <SignButton 
-            active={active}
-            onClick={onClick}
-        />
-        [ {value} ]
-    </SignsOuter>
-);
 
 class ProjectsList extends Component {
     state = {
@@ -132,7 +194,7 @@ class ProjectsList extends Component {
 
     setStateAsync = state => new Promise(resolve => this.setState(state, resolve));
 
-    fetchDonations = async (id) => {
+    fetchEarnings = async (id) => {
         try {
             const { arweave } = this.context;
 
@@ -147,14 +209,22 @@ class ProjectsList extends Component {
                     op: 'and',
                     expr1: {
                         op: 'equals',
-                        expr1: 'Type',
-                        expr2: 'crowdweave-project'
+                        expr1: 'App-Version',
+                        expr2: packageJson.version
                     },
                     expr2: {
-                        op: 'equals',
-                        expr1: 'Petition',
-                        expr2: id                        
-                    }
+                        op: 'and',
+                        expr1: {
+                            op: 'equals',
+                            expr1: 'Type',
+                            expr2: 'crowdweave-donation'
+                        },
+                        expr2: {
+                            op: 'equals',
+                            expr1: 'Project',
+                            expr2: id
+                        }
+                    }                    
                 }
             });
 
@@ -162,9 +232,11 @@ class ProjectsList extends Component {
                 const transaction = await arweave.transactions.get(tx);
                 const from = await arweave.wallets.ownerToAddress(transaction.get('owner'));
                 return {
+                    project: id,
                     id: transaction.get('id'),
                     from,
-                    transaction
+                    transaction,
+                    quantity: arweave.ar.winstonToAr(transaction.get('quantity'))
                 };
             }));
 
@@ -207,7 +279,7 @@ class ProjectsList extends Component {
             });
 
             const records = await Promise.all(txids.map(async (tx) => {
-                const donations = await this.fetchDonations(tx);
+                const earnings = await this.fetchEarnings(tx);
                 const transaction = await arweave.transactions.get(tx);
                 const {
                     name,
@@ -224,12 +296,12 @@ class ProjectsList extends Component {
                     description,
                     address,
                     target,
-                    donations,
+                    earnings,
                     transaction
                 };
             }));
 
-            console.log('>>>', records);
+            console.log('Projects:', records);
 
             await this.setStateAsync({
                 loading: false,
@@ -242,30 +314,36 @@ class ProjectsList extends Component {
         }
     };
 
-    signPetition = async (id, transactionContext) => {
+    sendDonation = async (id, target, quantity, transactionContext) => {
         try {
-            const { arweave, wallet } = this.context;
+            const { arweave, wallet, loggedIn } = this.context;
             const transactionMonitor = transactionContext;
+            const balance = await arweave.wallets.getBalance(loggedIn);
+            const arBalance = arweave.ar.winstonToAr(balance);
+
+            if (Number(arBalance) < (Number(quantity) + 0.26)) {
+                throw new Error('Insufficient funds on your balance');
+            }
+            
             const transaction = await arweave.createTransaction({
-                data: id
+                quantity: arweave.ar.arToWinston(quantity),
+                target
             }, wallet);
             transaction.addTag('App-Name', packageJson.name);
             transaction.addTag('App-Version', packageJson.version);
             transaction.addTag('Unix-Time', Math.round((new Date()).getTime() / 1000));
-            transaction.addTag('Type', 'sign');
-            transaction.addTag('Petition', id);
+            transaction.addTag('Type', 'crowdweave-donation');
+            transaction.addTag('Project', id);
             await arweave.transactions.sign(transaction, wallet);
             const response = await arweave.transactions.post(transaction);
 
             if (response.status === 400 || response.status === 500) {
-                return this.setState({
-                    error: new Error('Transaction failed')
-                });
+                throw new Error('Transaction failed');
             }
 
             transactionMonitor(
                 transaction.id, 
-                () => this.fetchList(),
+                () => setTimeout(() => this.fetchList(), 1500),
                 error => this.setState({
                     error
                 })
@@ -285,9 +363,14 @@ class ProjectsList extends Component {
         }
     }
 
+    calcPercent = (earnings, target) => {
+        return (earnings * 100 / target).toFixed(2);
+    }
+
     render() {
         const { records, loading, error } = this.state;
         const { loggedIn } = this.context;
+        const erns = records.map(r => r.earnings.reduce((acc, cv) => acc + Number(cv.quantity), 0));
 
         return (
             <div>
@@ -297,10 +380,19 @@ class ProjectsList extends Component {
                         <TransactionContext.Consumer>
                             {(transactionContext) => records.map((r, i) => (
                                 <Row key={i}>
-                                    <Title details={r}>
-                                        <strong>{i+1}:</strong> {r.name}
-                                    </Title>
-                                    <Target>Target: {r.target} AR</Target>
+                                    <Column>
+                                        <Title details={r}>
+                                            <strong>{i+1}:</strong> {r.name}
+                                        </Title>
+                                    </Column>
+                                    <Column>
+                                        <Target>Target: {Number(r.target).toFixed(2)} AR</Target>
+                                    </Column>
+                                    <Column textAlign="right">
+                                        {erns[i].toFixed(2)} AR ({this.calcPercent(erns[i], r.target)}%)
+                                    </Column>
+                                    
+                                    
                                     {/* <Signs 
                                         value={r.signs.length} 
                                         active={loggedIn && r.signs.findIndex(t => t.from === loggedIn) === -1} //hide signed positions
@@ -308,6 +400,14 @@ class ProjectsList extends Component {
                                             this.signPetition(r.id, transactionContext);
                                         }} 
                                     /> */}
+                                    <Column>
+                                        {(loggedIn && r.address !== loggedIn) &&
+                                            <Donate 
+                                                project={r.id}
+                                                onSubmit={(quantity) => this.sendDonation(r.id, r.address, quantity, transactionContext)}
+                                            />
+                                        }
+                                    </Column>                                    
                                 </Row>
                             ))}
                         </TransactionContext.Consumer>                    
@@ -315,7 +415,7 @@ class ProjectsList extends Component {
                     {loading &&
                         <LoadingOuter><Loader /></LoadingOuter>
                     }
-                    <Error error={error} onClose={() => this.setState({
+                    <ErrorMsg error={error} onClose={() => this.setState({
                         error: false
                     })} />
                 </ListOuter>           

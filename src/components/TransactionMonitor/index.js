@@ -70,6 +70,9 @@ const TransactionMonitor = ({ transaction, onSuccess, onError }) => {
             <p>
                 It can take up to 10 minutes
             </p>
+            <p>
+                Yes, it is annoying, we know
+            </p>
         </LoaderOuter>
     );
 };

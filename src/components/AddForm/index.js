@@ -132,6 +132,8 @@ const validateProjectDetails = ({
     }
 };
 
+const cleanText = text => String(text).replace(/(\b)(on\S+)(\s*)=|javascript|(<\s*)(\/*)script/gim, '');
+
 const processAdd = async (
     arweave, 
     wallet,
@@ -140,6 +142,8 @@ const processAdd = async (
     onError = () => {}
 ) => {
     try {
+        projectDetails.name = cleanText(projectDetails.name);
+        projectDetails.description = cleanText(projectDetails.description);
         validateProjectDetails(projectDetails);        
         const transaction = await arweave.createTransaction({
             data: JSON.stringify(projectDetails),

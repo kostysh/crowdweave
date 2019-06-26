@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { Component } from 'react';
 import styled from 'styled-components';
 
 import AppContext from '../../AppContext';
@@ -34,42 +34,72 @@ width: 100%;
 height: 100%;
 `;
 
-const processFile = (arweave, files, setloggedIn) => {
-    const fr = new FileReader();
+class ProjectsList extends Component {
 
-    fr.onload = async (ev) => {
-        try {
-            const wallet = JSON.parse(ev.target.result);
-            const address = await arweave.wallets.jwkToAddress(wallet);            
-            setloggedIn(address, wallet);
-        } catch (err) {
-            console.log('Error logging in: ', err);
-        }
+    state = {
+        balanceInterval: null,
+        ballance: 0
     };
 
-    fr.readAsText(files[0]);
-};
+    balanceFetcher = (arweave, address) => {
 
-export default () => {
-    const { arweave, loggedIn, setloggedIn } = useContext(AppContext);
-
-    if (loggedIn) {
-        return (
-            <AddressLink address={loggedIn} />
-        );
+        clearInterval(this.state.balanceInterval);
+        const balanceInterval = setInterval(async () => {
+            try {
+                const balance = await arweave.wallets.getBalance(address);
+                this.setState({
+                    balance: arweave.ar.winstonToAr(balance)
+                });
+            } catch(error) {}
+        }, 2000);
+        this.setState({
+            balanceInterval
+        });
     }
 
-    return (
-        <div>
-            <LogitOuter>
-                <FileDrop
-                    type="file" 
-                    onChange={({target: { files }}) => processFile(arweave, files, setloggedIn)}
-                />
-                <Label>Please login to create new projects or invest in existing ones.</Label>
-                <Label>Drop a wallet keyfile here</Label>                
-            </LogitOuter>
-            <Info>Don't have a wallet? Get one <a href="https://tokens.arweave.org/" rel="noopener noreferrer" target="_blank">here</a>!</Info>
-        </div>
-    );
+    processFile = (arweave, files, setloggedIn) => {
+        const fr = new FileReader();
+    
+        fr.onload = async (ev) => {
+            try {
+                const wallet = JSON.parse(ev.target.result);
+                const address = await arweave.wallets.jwkToAddress(wallet);            
+                setloggedIn(address, wallet);
+                this.balanceFetcher(arweave, address);
+            } catch (err) {
+                console.log('Error logging in: ', err);
+            }
+        };
+    
+        fr.readAsText(files[0]);
+    }
+
+    render() {
+        const { balance } = this.state;
+        const { arweave, loggedIn, setloggedIn } = this.context;
+
+        if (loggedIn) {
+            return (
+                <AddressLink address={loggedIn} balance={balance} />
+            );
+        }
+
+        return (
+            <div>
+                <LogitOuter>
+                    <FileDrop
+                        type="file" 
+                        onChange={({target: { files }}) => this.processFile(arweave, files, setloggedIn)}
+                    />
+                    <Label>Please login to create new projects or invest in existing ones.</Label>
+                    <Label>Drop a wallet keyfile here</Label>                
+                </LogitOuter>
+                <Info>Don't have a wallet? Get one <a href="https://tokens.arweave.org/" rel="noopener noreferrer" target="_blank">here</a>!</Info>
+            </div>
+        );
+    };
 };
+
+ProjectsList.contextType = AppContext;
+
+export default ProjectsList;
